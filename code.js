@@ -95,7 +95,7 @@ figma.ui.onmessage = async (msg) => {
           frame.y = originalY;
           
           // Lock aspect ratio on the frame
-          frame.constrainProportions = true;
+          frame.lockAspectRatio();
 
           frame.appendChild(imageNode);
           imageNode.x = 0;

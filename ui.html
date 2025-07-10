@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Ready to Resizer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+            background: white;
+            padding: 16px;
+            margin: 0;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        .container {
+            background: white;
+            padding: 0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        h1 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #333;
+        }
+        
+        .selection-info {
+            background: #f0f7ff;
+            border: 1px solid #c2e0ff;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 16px;
+            transition: all 0.2s ease;
+        }
+        
+        .selection-info.no-images {
+            background: #fff8e1;
+            border-color: #ffe082;
+        }
+        
+        .selection-info.success {
+            background: #e8f5e8;
+            border-color: #90ee90;
+        }
+        
+        .selection-info.updating {
+            background: #f0f0f0;
+            border-color: #ccc;
+        }
+        
+        .selection-text {
+            font-size: 11px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #28a745;
+            display: inline-block;
+            transition: all 0.2s ease;
+        }
+        
+        .status-dot.no-images {
+            background: #ffc107;
+        }
+        
+        .status-dot.success {
+            background: #28a745;
+        }
+        
+        .status-dot.updating {
+            background: #6c757d;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .description {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .input-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        
+        .input-label {
+            font-size: 12px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .input-helper {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .frame-name-input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            font-size: 12px;
+            color: #333;
+        }
+        
+        .frame-name-input:focus {
+            outline: none;
+            border-color: #007AFF;
+        }
+        
+        .buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: auto;
+            padding-top: 16px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 100%;
+        }
+        
+        .primary {
+            background: #007AFF;
+            color: white;
+        }
+        
+        .primary:hover:not(:disabled) {
+            background: #0056CC;
+        }
+        
+        .primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .secondary {
+            background: #f0f0f0;
+            color: #333;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+       
+        <div id="selectionInfo" class="selection-info">
+            <div class="selection-text">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="selectionText">Checking selection...</span>
+            </div>
+        </div>
+        
+        <div class="description">
+            This plugin will frame selected images and set constraints, making them ready for resizing.
+        </div>
+        
+        <div class="form-group">
+            <div class="input-header">
+                <label for="frameNameInput" class="input-label">Frame Name</label>
+                <span class="input-helper">(Optional)</span>
+            </div>
+            <input type="text" id="frameNameInput" class="frame-name-input" placeholder="">
+        </div>
+        
+        <div class="buttons">
+            <button id="goBtn" class="primary" disabled>Go</button>
+        </div>
+    </div>
+
+    <script>
+        console.log('UI script loaded');
+        
+        let hasImages = false;
+        let imageCount = 0;
+        let showingSuccessMessage = false;
+        let ignoreSelectionChanges = false;
+        
+        // Initialize UI
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, setting up event listeners');
+            
+            // Set up event listeners
+            document.getElementById('goBtn').addEventListener('click', frameImages);
+        });
+        
+        // Handle messages from plugin
+        window.onmessage = (event) => {
+            const msg = event.data.pluginMessage;
+            console.log('Received message:', msg.type, msg);
+            
+            if (msg.type === 'init') {
+                console.log('Plugin initialized');
+            }
+            
+            if (msg.type === 'selection-data') {
+                console.log('Received selection data:', msg);
+                // Only update if we're not showing a success message and not ignoring selection changes
+                if (!showingSuccessMessage && !ignoreSelectionChanges) {
+                    updateSelectionInfo(msg.count, msg.hasImages);
+                }
+            }
+            
+            if (msg.type === 'framing-success') {
+                console.log('Received framing success:', msg);
+                // Start ignoring selection changes immediately
+                ignoreSelectionChanges = true;
+                showSuccessMessage(msg.successCount, msg.errorCount);
+            }
+        };
+        
+        function updateSelectionInfo(count, hasImagesFlag) {
+            hasImages = hasImagesFlag;
+            imageCount = count;
+            
+            const selectionInfo = document.getElementById('selectionInfo');
+            const selectionText = document.getElementById('selectionText');
+            const statusDot = document.getElementById('statusDot');
+            const goBtn = document.getElementById('goBtn');
+            
+            // Remove updating state
+            selectionInfo.classList.remove('updating');
+            statusDot.classList.remove('updating');
+            
+            if (hasImages) {
+                selectionInfo.className = 'selection-info';
+                statusDot.className = 'status-dot';
+                selectionText.textContent = `${count} image${count !== 1 ? 's' : ''} selected and ready to frame`;
+                goBtn.disabled = false;
+            } else {
+                selectionInfo.className = 'selection-info no-images';
+                statusDot.className = 'status-dot no-images';
+                
+                if (count === 0) {
+                    selectionText.textContent = 'No images selected.';
+                } else {
+                    selectionText.textContent = `${count} item${count !== 1 ? 's' : ''} selected, but no images found. Select rectangles with image fills.`;
+                }
+                goBtn.disabled = true;
+            }
+            
+            console.log('Selection info updated:', { count, hasImages: hasImagesFlag });
+        }
+        
+        function showSuccessMessage(successCount, errorCount) {
+            showingSuccessMessage = true;
+            
+            const selectionInfo = document.getElementById('selectionInfo');
+            const selectionText = document.getElementById('selectionText');
+            const statusDot = document.getElementById('statusDot');
+            const goBtn = document.getElementById('goBtn');
+            const frameNameInput = document.getElementById('frameNameInput');
+            
+            // Show success state
+            selectionInfo.className = 'selection-info success';
+            statusDot.className = 'status-dot success';
+            
+            if (errorCount > 0) {
+                selectionText.textContent = `Done! ${successCount} image${successCount !== 1 ? 's' : ''} framed (${errorCount} failed). Feel free to resize your frames now.`;
+            } else {
+                selectionText.textContent = 'Done! Feel free to resize your frames now.';
+            }
+            
+            // Clear the input field for next use
+            frameNameInput.value = '';
+            
+            // Keep the button disabled in success state
+            goBtn.disabled = true;
+            
+            // After a short delay, start listening for user selection changes again
+            setTimeout(() => {
+                ignoreSelectionChanges = false;
+                showingSuccessMessage = false;
+            }, 1500); // 1.5 second delay to ensure automatic selection change is ignored
+        }
+        
+        function frameImages() {
+            console.log('Framing images');
+            
+            if (!hasImages) {
+                alert('Please select at least one image');
+                return;
+            }
+            
+            const customFrameName = document.getElementById('frameNameInput').value.trim();
+            
+            const messageData = {
+                type: 'frame-images'
+            };
+            
+            if (customFrameName) {
+                messageData.customFrameName = customFrameName;
+            }
+            
+            parent.postMessage({ 
+                pluginMessage: messageData
+            }, '*');
+        }
+        
+        function closePlugin() {
+            console.log('Closing plugin...');
+            parent.postMessage({ 
+                pluginMessage: { type: 'close-plugin' } 
+            }, '*');
+        }
+        
+        console.log('UI setup complete');
+    </script>
+</body>
+</html>

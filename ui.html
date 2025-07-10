@@ -207,7 +207,7 @@
     </div>
 
     <script>
-        console.log('UI script loaded');
+        // console.log('UI script loaded');
         
         let hasImages = false;
         let imageCount = 0;
@@ -216,7 +216,7 @@
         
         // Initialize UI
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, setting up event listeners');
+            // console.log('DOM loaded, setting up event listeners');
             
             // Set up event listeners
             document.getElementById('goBtn').addEventListener('click', frameImages);
@@ -225,14 +225,14 @@
         // Handle messages from plugin
         window.onmessage = (event) => {
             const msg = event.data.pluginMessage;
-            console.log('Received message:', msg.type, msg);
+            // console.log('Received message:', msg.type, msg);
             
-            if (msg.type === 'init') {
-                console.log('Plugin initialized');
-            }
+            // if (msg.type === 'init') {
+            //     console.log('Plugin initialized');
+            // }
             
             if (msg.type === 'selection-data') {
-                console.log('Received selection data:', msg);
+                // console.log('Received selection data:', msg);
                 // Only update if we're not showing a success message and not ignoring selection changes
                 if (!showingSuccessMessage && !ignoreSelectionChanges) {
                     updateSelectionInfo(msg.count, msg.hasImages);
@@ -240,7 +240,7 @@
             }
             
             if (msg.type === 'framing-success') {
-                console.log('Received framing success:', msg);
+                // console.log('Received framing success:', msg);
                 // Start ignoring selection changes immediately
                 ignoreSelectionChanges = true;
                 showSuccessMessage(msg.successCount, msg.errorCount);
@@ -277,7 +277,7 @@
                 goBtn.disabled = true;
             }
             
-            console.log('Selection info updated:', { count, hasImages: hasImagesFlag });
+            // console.log('Selection info updated:', { count, hasImages: hasImagesFlag });
         }
         
         function showSuccessMessage(successCount, errorCount) {
@@ -313,7 +313,7 @@
         }
         
         function frameImages() {
-            console.log('Framing images');
+            // console.log('Framing images');
             
             if (!hasImages) {
                 alert('Please select at least one image');
@@ -336,13 +336,13 @@
         }
         
         function closePlugin() {
-            console.log('Closing plugin...');
+            // console.log('Closing plugin...');
             parent.postMessage({ 
                 pluginMessage: { type: 'close-plugin' } 
             }, '*');
         }
         
-        console.log('UI setup complete');
+        // console.log('UI setup complete');
     </script>
 </body>
 </html>

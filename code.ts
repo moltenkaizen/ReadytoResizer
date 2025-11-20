@@ -145,8 +145,4 @@ figma.ui.onmessage = async (msg: { type: string; customFrameName?: string }) => 
       figma.notify('Error framing images. Check console for details.');
     }
   }
-
-  if (msg.type === 'close-plugin') {
-    figma.closePlugin();
-  }
 };

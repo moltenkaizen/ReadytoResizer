@@ -24,5 +24,5 @@ Essential for design teams who need to efficiently process screenshots for resea
 * Run it
 * Select images you wish to resize
 * Optionally enter a name for the resized frames
-* Press "Go"
+* Press "Go" button or Enter key
 * Now proceed to resize the new framed images using Figma device presets or a custom size

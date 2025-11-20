@@ -216,10 +216,16 @@
         
         // Initialize UI
         document.addEventListener('DOMContentLoaded', function() {
-            // console.log('DOM loaded, setting up event listeners');
             
             // Set up event listeners
+            
+            // Handle user clicking the Go button to iniate main action
             document.getElementById('goBtn').addEventListener('click', frameImages);
+
+            // Handle user pressing Enter key to initiate main action
+            document.getElementById('frameNameInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') frameImages();
+            });
         });
         
         // Handle messages from plugin

@@ -1,6 +1,6 @@
-# ReadtoResizer
+# ReadytoResizer
 
-Ready to Resizer is a Figma plugin for designers who work with screenshots during research and QA processes. When importing high-DPI screenshots from modern devices, they are full physical resolution but need to be scaled down to their logical size for proper comparison and analysis.
+ReadytoResizer is a Figma plugin for designers who work with screenshots during research and QA processes. When importing high-DPI screenshots from modern devices, they are full physical resolution but need to be scaled down to their logical size for proper comparison and analysis.
 
 This plugin automatically wraps selected images in frames with proper constraints and locked aspect ratio, making it easy to resize from physical dimensions to logical dimensions while maintaining perfect proportions.
 

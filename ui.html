@@ -214,9 +214,9 @@
         
         // Initialize UI
         document.addEventListener('DOMContentLoaded', function() {
-            
+
             // Set up event listeners
-            
+
             // Handle user clicking the Go button to iniate main action
             document.getElementById('goBtn').addEventListener('click', frameImages);
 
@@ -224,6 +224,9 @@
             document.getElementById('frameNameInput').addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') frameImages();
             });
+
+            // Notify plugin that UI is ready
+            parent.postMessage({ pluginMessage: { type: 'ui-ready' } }, '*');
         });
         
         // Handle messages from plugin

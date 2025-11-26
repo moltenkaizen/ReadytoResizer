@@ -38,16 +38,6 @@ function sendSelectionToUI() {
 // Always show UI when plugin is launched
 try {
     figma.showUI(__html__, { width: 320, height: 300 });
-    // Send initial data to UI
-    setTimeout(() => {
-        try {
-            figma.ui.postMessage({ type: 'init' });
-            sendSelectionToUI();
-        }
-        catch (error) {
-            console.error('Error sending initial data:', error);
-        }
-    }, 100);
     // Listen for selection changes
     figma.on('selectionchange', () => {
         sendSelectionToUI();
@@ -59,6 +49,9 @@ catch (error) {
 }
 // Handle messages from the UI
 figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
+    if (msg.type === 'ui-ready') {
+        sendSelectionToUI();
+    }
     if (msg.type === 'get-selection') {
         sendSelectionToUI();
     }

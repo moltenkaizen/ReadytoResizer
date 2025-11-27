@@ -1,3 +1,9 @@
+// Type definition for messages from the UI
+type UIMessage =
+  | { type: 'ui-ready' }
+  | { type: 'get-selection' }
+  | { type: 'frame-images'; customFrameName?: string };
+
 // Filter nodes to find rectangles with image fills
 function filterImageNodes(nodes: readonly SceneNode[]): RectangleNode[] {
   return nodes.filter((node): node is RectangleNode => {
@@ -48,7 +54,7 @@ try {
 }
 
 // Handle messages from the UI
-figma.ui.onmessage = async (msg: { type: string; customFrameName?: string }) => {
+figma.ui.onmessage = async (msg: UIMessage) => {
   if (msg.type === 'ui-ready') {
     sendSelectionToUI();
   }

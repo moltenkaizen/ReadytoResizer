@@ -78,6 +78,7 @@ figma.ui.onmessage = async (msg: UIMessage) => {
       const framedNodes: FrameNode[] = [];
       let successCount = 0;
       let errorCount = 0;
+      let skippedCount = 0;
 
       for (let i = 0; i < imageNodes.length; i++) {
         const imageNode = imageNodes[i];
@@ -86,7 +87,7 @@ figma.ui.onmessage = async (msg: UIMessage) => {
           // Skip locked nodes
           if (imageNode.locked) {
             console.warn(`Skipping locked node: ${imageNode.name}`);
-            errorCount++;
+            skippedCount++;
             continue;
           }
 
@@ -124,16 +125,30 @@ figma.ui.onmessage = async (msg: UIMessage) => {
       }
 
       if (successCount > 0) {
-        const message = errorCount > 0
-          ? `Framed ${successCount} image(s) (${errorCount} failed)`
-          : `Framed ${successCount} image(s) - ready to resize!`;
+        let message = `Framed ${successCount} image(s)`;
+        const details = [];
+
+        if (skippedCount > 0) {
+          details.push(`${skippedCount} locked`);
+        }
+        if (errorCount > 0) {
+          details.push(`${errorCount} failed`);
+        }
+
+        if (details.length > 0) {
+          message += ` (${details.join(', ')})`;
+        } else {
+          message += ' - ready to resize!';
+        }
+
         figma.notify(message);
 
         // Send success message to UI
         figma.ui.postMessage({
           type: 'framing-success',
           successCount: successCount,
-          errorCount: errorCount
+          errorCount: errorCount,
+          skippedCount: skippedCount
         });
       } else {
         figma.notify('Failed to frame images. Check console for details.');

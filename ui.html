@@ -206,11 +206,11 @@
         </div>
     </div>
 
-    <script>     
+    <script>
         let hasImages = false;
         let imageCount = 0;
         let showingSuccessMessage = false;
-        let ignoreSelectionChanges = false;
+        let ignoreNextSelectionUpdate = false;
         
         // Initialize UI
         document.addEventListener('DOMContentLoaded', function() {
@@ -232,18 +232,21 @@
         // Handle messages from plugin
         window.onmessage = (event) => {
             const msg = event.data.pluginMessage;
-            
-            if (msg.type === 'selection-data') {
-                // Only update if we're not showing a success message and not ignoring selection changes
-                if (!showingSuccessMessage && !ignoreSelectionChanges) {
-                    updateSelectionInfo(msg.count, msg.hasImages);
-                }
-            }
-            
-            if (msg.type === 'framing-success') {
 
-                // Start ignoring selection changes immediately
-                ignoreSelectionChanges = true;
+            if (msg.type === 'selection-data') {
+                // Ignore the first selection update after framing (automatic selection of new frames)
+                if (ignoreNextSelectionUpdate) {
+                    ignoreNextSelectionUpdate = false;
+                    return;
+                }
+
+                // Update selection info (this will clear success message if it's showing)
+                updateSelectionInfo(msg.count, msg.hasImages);
+            }
+
+            if (msg.type === 'framing-success') {
+                // Ignore only the next selection update (automatic selection of frames)
+                ignoreNextSelectionUpdate = true;
                 showSuccessMessage(msg.successCount, msg.errorCount);
             }
         };
@@ -251,16 +254,17 @@
         function updateSelectionInfo(count, hasImagesFlag) {
             hasImages = hasImagesFlag;
             imageCount = count;
-            
+            showingSuccessMessage = false;  // Clear success message when selection changes
+
             const selectionInfo = document.getElementById('selectionInfo');
             const selectionText = document.getElementById('selectionText');
             const statusDot = document.getElementById('statusDot');
             const goBtn = document.getElementById('goBtn');
-            
+
             // Remove updating state
             selectionInfo.classList.remove('updating');
             statusDot.classList.remove('updating');
-            
+
             if (hasImages) {
                 selectionInfo.className = 'selection-info';
                 statusDot.className = 'status-dot';
@@ -269,7 +273,7 @@
             } else {
                 selectionInfo.className = 'selection-info no-images';
                 statusDot.className = 'status-dot no-images';
-                
+
                 if (count === 0) {
                     selectionText.textContent = 'No images selected.';
                 } else {
@@ -277,39 +281,36 @@
                 }
                 goBtn.disabled = true;
             }
-            
+
         }
         
         function showSuccessMessage(successCount, errorCount) {
             showingSuccessMessage = true;
-            
+
             const selectionInfo = document.getElementById('selectionInfo');
             const selectionText = document.getElementById('selectionText');
             const statusDot = document.getElementById('statusDot');
             const goBtn = document.getElementById('goBtn');
             const frameNameInput = document.getElementById('frameNameInput');
-            
+
             // Show success state
             selectionInfo.className = 'selection-info success';
             statusDot.className = 'status-dot success';
-            
+
             if (errorCount > 0) {
                 selectionText.textContent = `Done! ${successCount} image${successCount !== 1 ? 's' : ''} framed (${errorCount} failed). Feel free to resize your frames now.`;
             } else {
                 selectionText.textContent = 'Done! Feel free to resize your frames now.';
             }
-            
+
             // Clear the input field for next use
             frameNameInput.value = '';
-            
+
             // Keep the button disabled in success state
             goBtn.disabled = true;
-            
-            // After a short delay, start listening for user selection changes again
-            setTimeout(() => {
-                ignoreSelectionChanges = false;
-                showingSuccessMessage = false;
-            }, 1500); // 1.5 second delay to ensure automatic selection change is ignored
+
+            // Success message will remain until user changes selection
+            // (automatic selection change from framing is ignored via ignoreNextSelectionUpdate flag)
         }
         
         function frameImages() {           

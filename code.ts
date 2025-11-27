@@ -1,12 +1,16 @@
-// Function to get current selection data
-function getSelectionData(): { count: number; hasImages: boolean } {
-  const selection = figma.currentPage.selection;
-
-  const imageNodes = selection.filter((node): node is RectangleNode => {
-    return node.type === 'RECTANGLE' && 
+// Filter nodes to find rectangles with image fills
+function filterImageNodes(nodes: readonly SceneNode[]): RectangleNode[] {
+  return nodes.filter((node): node is RectangleNode => {
+    return node.type === 'RECTANGLE' &&
            Array.isArray(node.fills) &&
            node.fills.some(fill => fill.type === 'IMAGE');
   });
+}
+
+// Function to get current selection data
+function getSelectionData(): { count: number; hasImages: boolean } {
+  const selection = figma.currentPage.selection;
+  const imageNodes = filterImageNodes(selection);
 
   return {
     count: imageNodes.length,
@@ -58,12 +62,7 @@ figma.ui.onmessage = async (msg: { type: string; customFrameName?: string }) => 
 
     try {
       const selection = figma.currentPage.selection;
-
-      const imageNodes = selection.filter((node): node is RectangleNode => {
-        return node.type === 'RECTANGLE' && 
-               Array.isArray(node.fills) &&
-               node.fills.some(fill => fill.type === 'IMAGE');
-      });
+      const imageNodes = filterImageNodes(selection);
 
       if (imageNodes.length === 0) {
         figma.notify('Please select at least one image');

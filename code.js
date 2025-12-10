@@ -86,7 +86,7 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                     const originalWidth = imageNode.width;
                     const originalHeight = imageNode.height;
                     const frame = figma.createFrame();
-                    frame.name = customFrameName || `Frame - ${imageNode.name}`;
+                    frame.name = customFrameName || imageNode.name;
                     frame.resize(originalWidth, originalHeight);
                     frame.fills = [];
                     frame.x = originalX;

@@ -91,6 +91,7 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                     frame.fills = [];
                     frame.x = originalX;
                     frame.y = originalY;
+                    frame.lockAspectRatio();
                     frame.appendChild(imageNode);
                     imageNode.x = 0;
                     imageNode.y = 0;

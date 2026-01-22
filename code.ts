@@ -95,6 +95,10 @@ figma.ui.onmessage = async (msg: UIMessage) => {
           const originalY = imageNode.y;
           const originalWidth = imageNode.width;
           const originalHeight = imageNode.height;
+          const parent = imageNode.parent;
+          const parentIndex = parent && 'children' in parent
+            ? parent.children.indexOf(imageNode)
+            : -1;
 
           const frame = figma.createFrame();
           frame.name = customFrameName || imageNode.name;
@@ -103,6 +107,11 @@ figma.ui.onmessage = async (msg: UIMessage) => {
           frame.x = originalX;
           frame.y = originalY;
           frame.lockAspectRatio();
+
+          // Insert frame into the same parent to preserve position within Sections/Groups
+          if (parent && 'insertChild' in parent && parentIndex !== -1) {
+            parent.insertChild(parentIndex, frame);
+          }
 
           frame.appendChild(imageNode);
           imageNode.x = 0;

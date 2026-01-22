@@ -85,6 +85,10 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                     const originalY = imageNode.y;
                     const originalWidth = imageNode.width;
                     const originalHeight = imageNode.height;
+                    const parent = imageNode.parent;
+                    const parentIndex = parent && 'children' in parent
+                        ? parent.children.indexOf(imageNode)
+                        : -1;
                     const frame = figma.createFrame();
                     frame.name = customFrameName || imageNode.name;
                     frame.resize(originalWidth, originalHeight);
@@ -92,6 +96,10 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                     frame.x = originalX;
                     frame.y = originalY;
                     frame.lockAspectRatio();
+                    // Insert frame into the same parent to preserve position within Sections/Groups
+                    if (parent && 'insertChild' in parent && parentIndex !== -1) {
+                        parent.insertChild(parentIndex, frame);
+                    }
                     frame.appendChild(imageNode);
                     imageNode.x = 0;
                     imageNode.y = 0;

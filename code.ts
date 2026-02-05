@@ -2,7 +2,42 @@
 type UIMessage =
   | { type: 'ui-ready' }
   | { type: 'get-selection' }
-  | { type: 'frame-images'; customFrameName?: string };
+  | { type: 'frame-images'; customFrameName?: string; arrangeHorizontally?: boolean };
+
+// Parse timestamp from common screenshot naming patterns
+function parseTimestampFromName(name: string): number | null {
+  // macOS/iOS: "Screenshot 2024-02-03 at 10.15.30"
+  const macosMatch = name.match(/(\d{4})-(\d{2})-(\d{2}) at (\d{1,2})\.(\d{2})\.(\d{2})/);
+  if (macosMatch) {
+    const [, year, month, day, hour, minute, second] = macosMatch;
+    return new Date(
+      parseInt(year), parseInt(month) - 1, parseInt(day),
+      parseInt(hour), parseInt(minute), parseInt(second)
+    ).getTime();
+  }
+
+  // Android: "Screenshot_20240203-101530" or "Screenshot_20240203_101530"
+  const androidMatch = name.match(/(\d{4})(\d{2})(\d{2})[-_](\d{2})(\d{2})(\d{2})/);
+  if (androidMatch) {
+    const [, year, month, day, hour, minute, second] = androidMatch;
+    return new Date(
+      parseInt(year), parseInt(month) - 1, parseInt(day),
+      parseInt(hour), parseInt(minute), parseInt(second)
+    ).getTime();
+  }
+
+  // ISO-like: "2024-02-03-10-15-30"
+  const isoMatch = name.match(/(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, year, month, day, hour, minute, second] = isoMatch;
+    return new Date(
+      parseInt(year), parseInt(month) - 1, parseInt(day),
+      parseInt(hour), parseInt(minute), parseInt(second)
+    ).getTime();
+  }
+
+  return null;
+}
 
 // Filter nodes to find rectangles with image fills
 function filterImageNodes(nodes: readonly SceneNode[]): RectangleNode[] {
@@ -64,7 +99,7 @@ figma.ui.onmessage = async (msg: UIMessage) => {
   }
 
   if (msg.type === 'frame-images') {
-    const { customFrameName } = msg;
+    const { customFrameName, arrangeHorizontally } = msg;
 
     try {
       const selection = figma.currentPage.selection;
@@ -75,7 +110,7 @@ figma.ui.onmessage = async (msg: UIMessage) => {
         return;
       }
 
-      const framedNodes: FrameNode[] = [];
+      const framedData: { frame: FrameNode; originalName: string }[] = [];
       let successCount = 0;
       let errorCount = 0;
       let skippedCount = 0;
@@ -95,6 +130,7 @@ figma.ui.onmessage = async (msg: UIMessage) => {
           const originalY = imageNode.y;
           const originalWidth = imageNode.width;
           const originalHeight = imageNode.height;
+          const originalName = imageNode.name;
           const parent = imageNode.parent;
           const parentIndex = parent && 'children' in parent
             ? parent.children.indexOf(imageNode)
@@ -121,7 +157,7 @@ figma.ui.onmessage = async (msg: UIMessage) => {
             vertical: 'STRETCH'
           };
 
-          framedNodes.push(frame);
+          framedData.push({ frame, originalName });
           successCount++;
 
         } catch (error) {
@@ -129,6 +165,37 @@ figma.ui.onmessage = async (msg: UIMessage) => {
           errorCount++;
         }
       }
+
+      // Arrange horizontally if requested
+      if (arrangeHorizontally && framedData.length > 0) {
+        // Sort by timestamp (with fallback to alphabetical)
+        framedData.sort((a, b) => {
+          const timeA = parseTimestampFromName(a.originalName);
+          const timeB = parseTimestampFromName(b.originalName);
+
+          // Both have timestamps - sort by time
+          if (timeA !== null && timeB !== null) return timeA - timeB;
+
+          // Only one has timestamp - timestamped first
+          if (timeA !== null) return -1;
+          if (timeB !== null) return 1;
+
+          // Neither has timestamp - sort alphabetically
+          return a.originalName.localeCompare(b.originalName);
+        });
+
+        // Position horizontally with 200px spacing
+        const startY = framedData[0].frame.y;
+        let currentX = framedData[0].frame.x;
+
+        for (const { frame } of framedData) {
+          frame.x = currentX;
+          frame.y = startY;
+          currentX += frame.width + 200;
+        }
+      }
+
+      const framedNodes = framedData.map(d => d.frame);
 
       if (framedNodes.length > 0) {
         figma.currentPage.selection = framedNodes;

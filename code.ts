@@ -89,12 +89,8 @@ try {
 }
 
 // Handle messages from the UI
-figma.ui.onmessage = async (msg: UIMessage) => {
-  if (msg.type === 'ui-ready') {
-    sendSelectionToUI();
-  }
-
-  if (msg.type === 'get-selection') {
+figma.ui.onmessage = (msg: UIMessage) => {
+  if (msg.type === 'ui-ready' || msg.type === 'get-selection') {
     sendSelectionToUI();
   }
 

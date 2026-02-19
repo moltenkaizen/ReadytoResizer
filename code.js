@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 // Parse timestamp from common screenshot naming patterns
 function parseTimestampFromName(name) {
     // macOS/iOS: "Screenshot 2024-02-03 at 10.15.30"
@@ -74,11 +65,8 @@ catch (error) {
     figma.closePlugin('Error starting plugin. Please try again.');
 }
 // Handle messages from the UI
-figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
-    if (msg.type === 'ui-ready') {
-        sendSelectionToUI();
-    }
-    if (msg.type === 'get-selection') {
+figma.ui.onmessage = (msg) => {
+    if (msg.type === 'ui-ready' || msg.type === 'get-selection') {
         sendSelectionToUI();
     }
     if (msg.type === 'frame-images') {
@@ -201,4 +189,4 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
             figma.notify('Error framing images. Check console for details.');
         }
     }
-});
+};

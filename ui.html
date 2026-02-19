@@ -30,13 +30,6 @@
             flex-direction: column;
         }
         
-        h1 {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: #333;
-        }
-        
         .selection-info {
             background: #f0f7ff;
             border: 1px solid #c2e0ff;
@@ -146,7 +139,6 @@
             display: flex;
             justify-content: center;
             margin-top: auto;
-            /* padding-top: 16px; */
         }
         
         button {
@@ -227,7 +219,6 @@
     <script>
         let hasImages = false;
         let imageCount = 0;
-        let showingSuccessMessage = false;
         let ignoreNextSelectionUpdate = false;
         
         // Initialize UI
@@ -250,6 +241,7 @@
         // Handle messages from plugin
         window.onmessage = (event) => {
             const msg = event.data.pluginMessage;
+            if (!msg) return;
 
             if (msg.type === 'selection-data') {
                 // Ignore the first selection update after framing (automatic selection of new frames)
@@ -272,7 +264,6 @@
         function updateSelectionInfo(count, hasImagesFlag) {
             hasImages = hasImagesFlag;
             imageCount = count;
-            showingSuccessMessage = false;  // Clear success message when selection changes
 
             const selectionInfo = document.getElementById('selectionInfo');
             const selectionText = document.getElementById('selectionText');
@@ -303,8 +294,6 @@
         }
         
         function showSuccessMessage(successCount, errorCount, skippedCount) {
-            showingSuccessMessage = true;
-
             const selectionInfo = document.getElementById('selectionInfo');
             const selectionText = document.getElementById('selectionText');
             const statusDot = document.getElementById('statusDot');
@@ -338,12 +327,7 @@
             // (automatic selection change from framing is ignored via ignoreNextSelectionUpdate flag)
         }
         
-        function frameImages() {           
-            if (!hasImages) {
-                alert('Please select at least one image');
-                return;
-            }
-            
+        function frameImages() {
             const customFrameName = document.getElementById('frameNameInput').value.trim();
             
             const messageData = {

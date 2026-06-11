@@ -219,7 +219,6 @@
     <script>
         let hasImages = false;
         let imageCount = 0;
-        let ignoreNextSelectionUpdate = false;
         
         // Initialize UI
         document.addEventListener('DOMContentLoaded', function() {
@@ -253,20 +252,18 @@
             if (!msg) return;
 
             if (msg.type === 'selection-data') {
-                // Ignore the first selection update after framing (automatic selection of new frames)
-                if (ignoreNextSelectionUpdate) {
-                    ignoreNextSelectionUpdate = false;
-                    return;
-                }
-
-                // Update selection info (this will clear success message if it's showing)
+                // Update selection info (this will clear success message if it's
+                // showing). The backend suppresses the selection update caused by
+                // its own post-framing selection change, so no UI-side flag needed.
                 updateSelectionInfo(msg.count, msg.hasImages);
             }
 
             if (msg.type === 'framing-success') {
-                // Ignore only the next selection update (automatic selection of frames)
-                ignoreNextSelectionUpdate = true;
-                showSuccessMessage(msg.successCount, msg.errorCount, msg.skippedCount, msg.arrangementSkipped);
+                showSuccessMessage(msg.successCount, msg.errorCount, msg.skippedCount, msg.alreadyFramedCount, msg.arrangementSkipped);
+            }
+
+            if (msg.type === 'framing-skipped') {
+                showAlreadyFramedMessage(msg.alreadyFramedCount);
             }
         };
         
@@ -302,7 +299,7 @@
 
         }
         
-        function showSuccessMessage(successCount, errorCount, skippedCount, arrangementSkipped) {
+        function showSuccessMessage(successCount, errorCount, skippedCount, alreadyFramedCount, arrangementSkipped) {
             const selectionInfo = document.getElementById('selectionInfo');
             const selectionText = document.getElementById('selectionText');
             const statusDot = document.getElementById('statusDot');
@@ -318,6 +315,9 @@
 
             if (skippedCount > 0) {
                 lines.push(`${skippedCount} locked image${skippedCount !== 1 ? 's' : ''} skipped.`);
+            }
+            if (alreadyFramedCount > 0) {
+                lines.push(`${alreadyFramedCount} image${alreadyFramedCount !== 1 ? 's' : ''} already framed.`);
             }
             if (errorCount > 0) {
                 lines.push(`${errorCount} image${errorCount !== 1 ? 's' : ''} failed.`);
@@ -339,6 +339,18 @@
             // (automatic selection change from framing is ignored via ignoreNextSelectionUpdate flag)
         }
         
+        function showAlreadyFramedMessage(count) {
+            const selectionInfo = document.getElementById('selectionInfo');
+            const selectionText = document.getElementById('selectionText');
+            const statusDot = document.getElementById('statusDot');
+
+            // Warning styling — nothing was framed; selection is unchanged
+            selectionInfo.className = 'selection-info no-images';
+            statusDot.className = 'status-dot no-images';
+            selectionText.textContent =
+                `${count} image${count !== 1 ? 's are' : ' is'} already framed by this plugin. Select unframed images.`;
+        }
+
         function frameImages() {
             const customFrameName = document.getElementById('frameNameInput').value.trim();
             

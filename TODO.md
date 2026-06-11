@@ -117,15 +117,22 @@ just my own workflow.
 
 ## Tier 3 — Lower confidence / investigate
 
-- [ ] **Re-framing already-framed images double-wraps them** — discovered
+- [x] **Re-framing already-framed images double-wraps them** — discovered
   during Tier 2 testing: selecting images that are already inside
   plugin-created frames wraps each in another frame (and each wrapper is a
   different parent, so arrangement gets skipped as "different containers").
   Could detect that the image's parent is a single-child frame with the
   same dimensions and skip or reuse it.
-  *Confidence: verified · Severity: low (user error, but easy to hit)*
+  *Fixed 2026-06-11: frames are tagged with `setPluginData` on creation;
+  images whose parent carries the tag are skipped and reported as
+  "already framed". Frames created by pre-tag versions aren't detected —
+  acceptable edge.*
 
-- [ ] **`ignoreNextSelectionUpdate` can swallow a real selection change** — `ui.html:222, 248-251, 259`
+- [x] **`ignoreNextSelectionUpdate` can swallow a real selection change** — `ui.html:222, 248-251, 259`
+  *Fixed 2026-06-11 with the recommended backend-side approach: the backend
+  records the selection ids it just set and suppresses the resulting
+  `selectionchange` only if the actual selection still matches — a
+  coalesced user change differs and passes through. UI flag removed.*
   Docs confirm `selectionchange` fires on programmatic changes, runs
   callbacks asynchronously, and **coalesces events** ("the callback will not
   necessarily be called each time"). If the user changes selection quickly
@@ -137,13 +144,24 @@ just my own workflow.
   *Confidence: documented mechanism, unreproduced · Severity: low (rare,
   self-healing)*
 
-- [ ] **Rotated images: behavior unverified** — `code.ts:125-150`
+- [x] **Rotated images: behavior unverified** — `code.ts:125-150`
+  *Verified empirically 2026-06-11 (in the Figma sort-test file): position
+  is preserved but the unrotated frame clips the rotated image's corners.
+  Fixed by transferring rotation to the frame (set after x/y, which stay
+  fixed) and zeroing it on the image — renders identically, stays
+  resizable.*
   The x/y/width/height copying assumes no rotation; docs are silent on how
   `appendChild` treats transforms. Likely misplacement/clipping. Cheap
   insurance: skip rotated nodes with a warning, or test empirically first.
   *Confidence: speculative (~60%) · Severity: low (rare in screenshot flows)*
 
-- [ ] **Android regex can false-positive** — `code.ts:20`
+- [x] **Android regex can false-positive** — `code.ts:20`
+  *Fixed 2026-06-11 (partially, by design): range validation rejects
+  impossible dates/times (month 13, hour 25, …) across all patterns, and
+  digit-run boundaries stop matches inside longer numbers. Plausible
+  timestamps in unrelated names (`invoice_20240203-101530`) still parse —
+  unavoidable without anchoring to tool-specific prefixes; documented in
+  the test suite.*
   Verified: `invoice_20240203-101530_final` parses as a timestamp. Any
   8-digits + separator + 6-digits run matches. Could anchor near "Screenshot"
   or validate ranges (month ≤ 12, hour ≤ 23). Only affects sort order of

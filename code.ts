@@ -5,6 +5,17 @@ type UIMessage =
   | { type: 'resize'; height: number }
   | { type: 'frame-images'; customFrameName?: string; arrangeHorizontally?: boolean };
 
+// Reject impossible dates/times (e.g. month 13, hour 25) so digit runs in
+// unrelated names are less likely to parse as timestamps
+function toValidTimestamp(
+  year: number, month: number, day: number,
+  hour: number, minute: number, second: number
+): number | null {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  if (hour > 23 || minute > 59 || second > 59) return null;
+  return new Date(year, month - 1, day, hour, minute, second).getTime();
+}
+
 // Parse timestamp from common screenshot naming patterns
 function parseTimestampFromName(name: string): number | null {
   // macOS: "Screenshot 2024-02-03 at 10.15.30" or "... at 1.05.30 PM"
@@ -19,49 +30,55 @@ function parseTimestampFromName(name: string): number | null {
       if (isPM && hour24 !== 12) hour24 += 12;
       else if (!isPM && hour24 === 12) hour24 = 0;
     }
-    return new Date(
-      parseInt(year), parseInt(month) - 1, parseInt(day),
+    const ts = toValidTimestamp(
+      parseInt(year), parseInt(month), parseInt(day),
       hour24, parseInt(minute), parseInt(second)
-    ).getTime();
+    );
+    if (ts !== null) return ts;
   }
 
   // Android: "Screenshot_20240203-101530" or "Screenshot_20240203_101530"
-  const androidMatch = name.match(/(\d{4})(\d{2})(\d{2})[-_](\d{2})(\d{2})(\d{2})/);
+  // (boundaries so digits embedded in longer runs don't match)
+  const androidMatch = name.match(/(?:^|\D)(\d{4})(\d{2})(\d{2})[-_](\d{2})(\d{2})(\d{2})(?!\d)/);
   if (androidMatch) {
     const [, year, month, day, hour, minute, second] = androidMatch;
-    return new Date(
-      parseInt(year), parseInt(month) - 1, parseInt(day),
+    const ts = toValidTimestamp(
+      parseInt(year), parseInt(month), parseInt(day),
       parseInt(hour), parseInt(minute), parseInt(second)
-    ).getTime();
+    );
+    if (ts !== null) return ts;
   }
 
   // ISO-like: "2024-02-03-10-15-30"
   const isoMatch = name.match(/(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})/);
   if (isoMatch) {
     const [, year, month, day, hour, minute, second] = isoMatch;
-    return new Date(
-      parseInt(year), parseInt(month) - 1, parseInt(day),
+    const ts = toValidTimestamp(
+      parseInt(year), parseInt(month), parseInt(day),
       parseInt(hour), parseInt(minute), parseInt(second)
-    ).getTime();
+    );
+    if (ts !== null) return ts;
   }
 
   // Windows Snipping Tool: "Screenshot 2024-02-03 101530"
-  const windowsMatch = name.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2})(\d{2})/);
+  const windowsMatch = name.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2})(\d{2})(?!\d)/);
   if (windowsMatch) {
     const [, year, month, day, hour, minute, second] = windowsMatch;
-    return new Date(
-      parseInt(year), parseInt(month) - 1, parseInt(day),
+    const ts = toValidTimestamp(
+      parseInt(year), parseInt(month), parseInt(day),
       parseInt(hour), parseInt(minute), parseInt(second)
-    ).getTime();
+    );
+    if (ts !== null) return ts;
   }
 
   // Shottr: "SCR-20240203-xxxx" — date only, parsed as midnight; the
   // time-encoded suffix makes the alphabetical tiebreak preserve
   // same-day order
-  const shottrMatch = name.match(/SCR-(\d{4})(\d{2})(\d{2})/);
+  const shottrMatch = name.match(/SCR-(\d{4})(\d{2})(\d{2})(?!\d)/);
   if (shottrMatch) {
     const [, year, month, day] = shottrMatch;
-    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).getTime();
+    const ts = toValidTimestamp(parseInt(year), parseInt(month), parseInt(day), 0, 0, 0);
+    if (ts !== null) return ts;
   }
 
   return null;
@@ -102,12 +119,27 @@ function sendSelectionToUI(): void {
   }
 }
 
+// Set after the plugin changes the selection itself, to suppress the
+// resulting selectionchange event. Compared against the actual selection
+// because Figma coalesces events: a quick user change can merge with the
+// plugin-triggered one, and that merged event must NOT be suppressed.
+let pluginSetSelectionKey: string | null = null;
+
+function selectionKey(nodes: readonly SceneNode[]): string {
+  return nodes.map(n => n.id).sort().join(',');
+}
+
 // Always show UI when plugin is launched
 try {
   figma.showUI(__html__, { width: 320, height: 300, themeColors: true });
 
   // Listen for selection changes
   figma.on('selectionchange', () => {
+    if (pluginSetSelectionKey !== null) {
+      const isPluginChange = selectionKey(figma.currentPage.selection) === pluginSetSelectionKey;
+      pluginSetSelectionKey = null;
+      if (isPluginChange) return;
+    }
     sendSelectionToUI();
   });
 
@@ -142,6 +174,7 @@ figma.ui.onmessage = (msg: UIMessage) => {
       let successCount = 0;
       let errorCount = 0;
       let skippedCount = 0;
+      let alreadyFramedCount = 0;
 
       for (let i = 0; i < imageNodes.length; i++) {
         const imageNode = imageNodes[i];
@@ -154,10 +187,21 @@ figma.ui.onmessage = (msg: UIMessage) => {
             continue;
           }
 
+          // Skip images already framed by this plugin (re-framing would
+          // nest a second wrapper frame around them)
+          if (
+            imageNode.parent && imageNode.parent.type === 'FRAME' &&
+            imageNode.parent.getPluginData('readyToResizer') !== ''
+          ) {
+            alreadyFramedCount++;
+            continue;
+          }
+
           const originalX = imageNode.x;
           const originalY = imageNode.y;
           const originalWidth = imageNode.width;
           const originalHeight = imageNode.height;
+          const originalRotation = imageNode.rotation;
           const originalName = imageNode.name;
           const parent = imageNode.parent;
           const parentIndex = parent && 'children' in parent
@@ -170,7 +214,12 @@ figma.ui.onmessage = (msg: UIMessage) => {
           frame.fills = [];
           frame.x = originalX;
           frame.y = originalY;
+          // Transfer rotation to the frame (after x/y: rotating keeps x/y
+          // fixed); the image is un-rotated inside so it fills the frame
+          // instead of being clipped by an unrotated one (verified empirically)
+          frame.rotation = originalRotation;
           frame.lockAspectRatio();
+          frame.setPluginData('readyToResizer', 'frame');
 
           // Insert frame into the same parent to preserve position within Sections/Groups
           if (parent && 'insertChild' in parent && parentIndex !== -1) {
@@ -178,6 +227,7 @@ figma.ui.onmessage = (msg: UIMessage) => {
           }
 
           frame.appendChild(imageNode);
+          imageNode.rotation = 0;
           imageNode.x = 0;
           imageNode.y = 0;
           imageNode.constraints = {
@@ -246,6 +296,7 @@ figma.ui.onmessage = (msg: UIMessage) => {
 
       if (framedNodes.length > 0) {
         figma.currentPage.selection = framedNodes;
+        pluginSetSelectionKey = selectionKey(framedNodes);
       }
 
       if (successCount > 0) {
@@ -254,6 +305,9 @@ figma.ui.onmessage = (msg: UIMessage) => {
 
         if (skippedCount > 0) {
           details.push(`${skippedCount} locked`);
+        }
+        if (alreadyFramedCount > 0) {
+          details.push(`${alreadyFramedCount} already framed`);
         }
         if (errorCount > 0) {
           details.push(`${errorCount} failed`);
@@ -276,7 +330,14 @@ figma.ui.onmessage = (msg: UIMessage) => {
           successCount: successCount,
           errorCount: errorCount,
           skippedCount: skippedCount,
+          alreadyFramedCount: alreadyFramedCount,
           arrangementSkipped: arrangementSkipped
+        });
+      } else if (alreadyFramedCount > 0 && errorCount === 0) {
+        figma.notify('Selected image(s) are already framed by this plugin');
+        figma.ui.postMessage({
+          type: 'framing-skipped',
+          alreadyFramedCount: alreadyFramedCount
         });
       } else {
         figma.notify('Failed to frame images. Check console for details.', { error: true });

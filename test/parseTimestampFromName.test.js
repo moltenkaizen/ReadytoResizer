@@ -121,12 +121,24 @@ test('names without a timestamp return null', () => {
   assert.equal(parse('Rectangle 42'), null);
 });
 
-test('known false positive: any 8-digits + separator + 6-digits run parses (TODO Tier 3)', () => {
-  // Documents current behavior, not desired behavior. If this starts
-  // failing because the Android pattern got stricter, that's the Tier 3
-  // fix landing — update this test to expect null.
+test('known false positive: plausible date+time in unrelated names still parses', () => {
+  // Documents accepted behavior: 2024-02-03 10:15:30 is a fully valid
+  // timestamp, and the pattern can't know "invoice" isn't a screenshot.
+  // Range validation (below) only rejects impossible dates/times.
   assert.equal(
     parse('invoice_20240203-101530_final'),
     localTime(2024, 2, 3, 10, 15, 30)
   );
+});
+
+test('impossible dates/times are rejected (Tier 3 range validation)', () => {
+  assert.equal(parse('doc_20241399-256075_v2'), null);   // month 13, hour 25
+  assert.equal(parse('Screenshot_20240003-101530'), null); // day 0
+  assert.equal(parse('Screenshot_20241201-106030'), null); // minute 60
+});
+
+test('digits embedded in longer runs do not match (Tier 3 boundaries)', () => {
+  assert.equal(parse('120240203-101530'), null);          // 9-digit run before separator
+  assert.equal(parse('Screenshot_20240203-1015309'), null); // 7-digit run after separator
+  assert.equal(parse('SCR-202402031'), null);             // 9-digit run after SCR-
 });

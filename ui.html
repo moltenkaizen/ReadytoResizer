@@ -231,7 +231,7 @@
 
             // Handle user pressing Enter key to initiate main action
             document.getElementById('frameNameInput').addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') frameImages();
+                if (e.key === 'Enter' && !document.getElementById('goBtn').disabled) frameImages();
             });
 
             // Notify plugin that UI is ready

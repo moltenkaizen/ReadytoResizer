@@ -1,11 +1,21 @@
 "use strict";
 // Parse timestamp from common screenshot naming patterns
 function parseTimestampFromName(name) {
-    // macOS/iOS: "Screenshot 2024-02-03 at 10.15.30"
-    const macosMatch = name.match(/(\d{4})-(\d{2})-(\d{2}) at (\d{1,2})\.(\d{2})\.(\d{2})/);
+    // macOS: "Screenshot 2024-02-03 at 10.15.30" or "... at 1.05.30 PM"
+    // (12-hour locales; modern macOS puts a narrow no-break space U+202F
+    // before AM/PM, which \s matches)
+    const macosMatch = name.match(/(\d{4})-(\d{2})-(\d{2}) at (\d{1,2})\.(\d{2})\.(\d{2})(?:\s?(AM|PM))?/i);
     if (macosMatch) {
-        const [, year, month, day, hour, minute, second] = macosMatch;
-        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute), parseInt(second)).getTime();
+        const [, year, month, day, hour, minute, second, meridiem] = macosMatch;
+        let hour24 = parseInt(hour);
+        if (meridiem) {
+            const isPM = meridiem.toUpperCase() === 'PM';
+            if (isPM && hour24 !== 12)
+                hour24 += 12;
+            else if (!isPM && hour24 === 12)
+                hour24 = 0;
+        }
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), hour24, parseInt(minute), parseInt(second)).getTime();
     }
     // Android: "Screenshot_20240203-101530" or "Screenshot_20240203_101530"
     const androidMatch = name.match(/(\d{4})(\d{2})(\d{2})[-_](\d{2})(\d{2})(\d{2})/);
@@ -18,6 +28,20 @@ function parseTimestampFromName(name) {
     if (isoMatch) {
         const [, year, month, day, hour, minute, second] = isoMatch;
         return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute), parseInt(second)).getTime();
+    }
+    // Windows Snipping Tool: "Screenshot 2024-02-03 101530"
+    const windowsMatch = name.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2})(\d{2})/);
+    if (windowsMatch) {
+        const [, year, month, day, hour, minute, second] = windowsMatch;
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute), parseInt(second)).getTime();
+    }
+    // Shottr: "SCR-20240203-xxxx" — date only, parsed as midnight; the
+    // time-encoded suffix makes the alphabetical tiebreak preserve
+    // same-day order
+    const shottrMatch = name.match(/SCR-(\d{4})(\d{2})(\d{2})/);
+    if (shottrMatch) {
+        const [, year, month, day] = shottrMatch;
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).getTime();
     }
     return null;
 }
@@ -132,9 +156,12 @@ figma.ui.onmessage = (msg) => {
                 framedData.sort((a, b) => {
                     const timeA = parseTimestampFromName(a.originalName);
                     const timeB = parseTimestampFromName(b.originalName);
-                    // Both have timestamps - sort by time
-                    if (timeA !== null && timeB !== null)
-                        return timeA - timeB;
+                    // Both have timestamps - sort by time, alphabetical tiebreak
+                    // (date-only formats like Shottr parse to midnight, and their
+                    // time-encoded suffixes sort chronologically)
+                    if (timeA !== null && timeB !== null) {
+                        return timeA - timeB || a.originalName.localeCompare(b.originalName);
+                    }
                     // Only one has timestamp - timestamped first
                     if (timeA !== null)
                         return -1;

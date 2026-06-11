@@ -60,6 +60,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            white-space: pre-line;
         }
 
         .status-dot {
@@ -217,9 +218,6 @@
     </div>
 
     <script>
-        let hasImages = false;
-        let imageCount = 0;
-        
         // Initialize UI
         document.addEventListener('DOMContentLoaded', function() {
 
@@ -267,10 +265,7 @@
             }
         };
         
-        function updateSelectionInfo(count, hasImagesFlag) {
-            hasImages = hasImagesFlag;
-            imageCount = count;
-
+        function updateSelectionInfo(count, hasImages) {
             const selectionInfo = document.getElementById('selectionInfo');
             const selectionText = document.getElementById('selectionText');
             const statusDot = document.getElementById('statusDot');
@@ -327,7 +322,7 @@
             }
 
             lines.push('Feel free to resize your frames now.');
-            selectionText.innerHTML = lines.join('<br>');
+            selectionText.textContent = lines.join('\n');
 
             // Clear the input field for next use
             frameNameInput.value = '';

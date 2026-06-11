@@ -170,19 +170,28 @@ just my own workflow.
 
 ## Tier 4 — Hygiene & polish
 
-- [ ] **Remove dead UI state** — `ui.html:220-221`
+- [x] **Remove dead UI state** — `ui.html:220-221`
   `hasImages` and `imageCount` are written but never read. Delete, or use
   `hasImages` for the Enter-key guard (Tier 1).
-- [ ] **Replace `innerHTML` with safer DOM updates** — `ui.html:318`
+  *Done 2026-06-11: globals deleted (the Enter guard reads the button's
+  disabled state instead).*
+- [x] **Replace `innerHTML` with safer DOM updates** — `ui.html:318`
   Only numbers are interpolated today, so it's safe — but `textContent` with
   `white-space: pre-line` removes the habit risk.
-- [ ] **Fill in `package.json` metadata** — `description` is still
+  *Done 2026-06-11: exactly that.*
+- [x] **Fill in `package.json` metadata** — `description` is still
   "Your Figma Plugin"; `author` and `license` are empty. Pick a real license
   for a published plugin.
-- [ ] **Pin `@figma/eslint-plugin-figma-plugins`** — currently `"*"`; a
+  *Done 2026-06-11: real description, author Stephen Fox, MIT license +
+  LICENSE file.*
+- [x] **Pin `@figma/eslint-plugin-figma-plugins`** — currently `"*"`; a
   breaking release breaks lint unpredictably. Pin like the other deps.
-- [ ] **Migrate to ESLint 9 / flat config** — ESLint 8 is EOL (late 2024).
+  *Done 2026-06-11: `^1.0.0` (upgraded as part of the ESLint 9 migration).*
+- [x] **Migrate to ESLint 9 / flat config** — ESLint 8 is EOL (late 2024).
   Lint passes today; do this before the Figma plugin ecosystem drops 8.
+  *Done 2026-06-11: eslint ^9 + typescript-eslint ^8 (single package) +
+  @figma plugin ^1.0.0 via its `flatConfigs.recommended`; config lives in
+  `eslint.config.mjs`, `eslintConfig` block removed from package.json.*
 - [x] **Add a unit test for `parseTimestampFromName`** — the one pure function
   in the project, and it had a real bug (AM/PM). A tiny Node test file
   covering macOS 12h/24h, Android, ISO, Shottr, and false-positive cases
@@ -191,8 +200,13 @@ just my own workflow.
   (builds first, then Node's built-in test runner — no new dependencies).
   12 tests covering every supported format, the AM/PM edge cases, null
   fallbacks, and the documented Tier 3 false positive.*
-- [ ] **Consider `setRelaunchData`** — stamp created frames so the plugin can
+- [x] **Consider `setRelaunchData`** — stamp created frames so the plugin can
   be re-run from the right sidebar when a frame is selected. Pure polish.
+  *Considered & rejected 2026-06-11: implemented, tried in real usage, then
+  removed. The button only opens the plugin — it can't act on the selected
+  frame, and framing is a once-per-image action, so the implied "re-run on
+  this frame" is misleading. Provenance/quick-launch value judged not worth
+  the sidebar clutter for this plugin's workflow.*
 
 ## Considered & rejected (for now)
 

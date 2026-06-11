@@ -13,6 +13,7 @@ npm run build        # Compile code.ts → code.js
 npm run watch        # Compile with file watching (dev mode)
 npm run lint         # Run ESLint
 npm run lint:fix     # Auto-fix ESLint violations
+npm test             # Build, then run unit tests (Node built-in runner)
 ```
 
 After building, reload the plugin manually in Figma Desktop (no hot reload). UI changes to `ui.html` don't require a rebuild.
@@ -35,5 +36,5 @@ This is a **Figma plugin** with two isolated runtime contexts that communicate v
 - Discriminated union types for message passing
 - Type guard functions for node filtering (e.g., `node is RectangleNode`)
 - Unused variables prefixed with `_` (configured in ESLint)
-- ESLint extends: `eslint:recommended`, `@typescript-eslint/recommended`, `@figma/figma-plugins/recommended`
+- ESLint 9 flat config (`eslint.config.mjs`): `@eslint/js` recommended, `typescript-eslint` recommended, `@figma/eslint-plugin-figma-plugins` flat recommended
 - No runtime dependencies — only Figma API and dev tooling

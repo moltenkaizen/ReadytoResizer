@@ -1,45 +1,23 @@
 {
   "name": "ReadyToResizer",
   "version": "1.0.0",
-  "description": "Your Figma Plugin",
+  "description": "Figma plugin that frames selected images with locked aspect ratios and stretch constraints, making high-DPI screenshots easy to resize to logical dimensions",
   "main": "code.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules .",
-    "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix .",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix .",
     "test": "npm run build && node --test",
     "watch": "npm run build -- --watch"
   },
-  "author": "",
-  "license": "",
+  "author": "Stephen Fox",
+  "license": "MIT",
   "devDependencies": {
-    "@figma/eslint-plugin-figma-plugins": "*",
+    "@eslint/js": "^9.39.4",
+    "@figma/eslint-plugin-figma-plugins": "^1.0.0",
     "@figma/plugin-typings": "^1.121.0",
-    "@typescript-eslint/eslint-plugin": "^6.12.0",
-    "@typescript-eslint/parser": "^6.12.0",
-    "eslint": "^8.54.0",
-    "typescript": "^5.3.2"
-  },
-  "eslintConfig": {
-    "extends": [
-      "eslint:recommended",
-      "plugin:@typescript-eslint/recommended",
-      "plugin:@figma/figma-plugins/recommended"
-    ],
-    "parser": "@typescript-eslint/parser",
-    "parserOptions": {
-      "project": "./tsconfig.json"
-    },
-    "root": true,
-    "rules": {
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          "argsIgnorePattern": "^_",
-          "varsIgnorePattern": "^_",
-          "caughtErrorsIgnorePattern": "^_"
-        }
-      ]
-    }
+    "eslint": "^9.39.4",
+    "typescript": "^5.3.2",
+    "typescript-eslint": "^8.61.0"
   }
 }

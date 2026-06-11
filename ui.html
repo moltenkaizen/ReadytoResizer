@@ -10,53 +10,53 @@
             padding: 0;
         }
         
+        /* Colors use Figma's theme variables (injected via themeColors: true)
+           so the UI follows light/dark mode; fallbacks match the old light theme */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             font-size: 12px;
             line-height: 1.4;
-            color: #333;
-            background: white;
+            color: var(--figma-color-text, #333);
+            background: var(--figma-color-bg, white);
             padding: 16px;
             margin: 0;
-            height: 100vh;
             box-sizing: border-box;
         }
-        
+
         .container {
-            background: white;
+            background: transparent;
             padding: 0;
-            height: 100%;
             display: flex;
             flex-direction: column;
         }
-        
+
         .selection-info {
-            background: #f0f7ff;
-            border: 1px solid #c2e0ff;
+            background: var(--figma-color-bg-selected, #f0f7ff);
+            border: 1px solid var(--figma-color-border-selected, #c2e0ff);
             border-radius: 4px;
             padding: 12px 8px 12px 12px;
             margin-bottom: 16px;
             transition: all 0.2s ease;
         }
-        
+
         .selection-info.no-images {
-            background: #fff8e1;
-            border-color: #ffe082;
+            background: var(--figma-color-bg-warning-tertiary, #fff8e1);
+            border-color: var(--figma-color-border-warning, #ffe082);
         }
-        
+
         .selection-info.success {
-            background: #e8f5e8;
-            border-color: #90ee90;
+            background: var(--figma-color-bg-success-tertiary, #e8f5e8);
+            border-color: var(--figma-color-border-success, #90ee90);
         }
-        
+
         .selection-info.updating {
-            background: #f0f0f0;
-            border-color: #ccc;
+            background: var(--figma-color-bg-secondary, #f0f0f0);
+            border-color: var(--figma-color-border, #ccc);
         }
-        
+
         .selection-text {
             font-size: 11px;
-            color: #666;
+            color: var(--figma-color-text-secondary, #666);
             display: flex;
             align-items: center;
             gap: 8px;
@@ -68,21 +68,21 @@
             min-width: 8px;
             min-height: 8px;
             border-radius: 50%;
-            background: #28a745;
+            background: var(--figma-color-icon-success, #28a745);
             flex-shrink: 0;
             transition: all 0.2s ease;
         }
-        
+
         .status-dot.no-images {
-            background: #ffc107;
+            background: var(--figma-color-icon-warning, #ffc107);
         }
-        
+
         .status-dot.success {
-            background: #28a745;
+            background: var(--figma-color-icon-success, #28a745);
         }
-        
+
         .status-dot.updating {
-            background: #6c757d;
+            background: var(--figma-color-icon-secondary, #6c757d);
             animation: pulse 1s infinite;
         }
         
@@ -93,7 +93,7 @@
         
         .description {
             font-size: 11px;
-            color: #666;
+            color: var(--figma-color-text-secondary, #666);
             margin-bottom: 16px;
             line-height: 1.5;
         }
@@ -111,34 +111,33 @@
         
         .input-label {
             font-size: 12px;
-            color: #333;
+            color: var(--figma-color-text, #333);
             font-weight: 500;
         }
-        
+
         .input-helper {
             font-size: 11px;
-            color: #666;
+            color: var(--figma-color-text-secondary, #666);
         }
-        
+
         .frame-name-input {
             width: 100%;
             padding: 8px 10px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--figma-color-border, #ddd);
             border-radius: 4px;
-            background: white;
+            background: var(--figma-color-bg, white);
             font-size: 12px;
-            color: #333;
+            color: var(--figma-color-text, #333);
         }
-        
+
         .frame-name-input:focus {
             outline: none;
-            border-color: #007AFF;
+            border-color: var(--figma-color-border-selected, #007AFF);
         }
         
         .buttons {
             display: flex;
             justify-content: center;
-            margin-top: auto;
         }
         
         button {
@@ -153,16 +152,17 @@
         }
         
         .primary {
-            background: #007AFF;
-            color: white;
+            background: var(--figma-color-bg-brand, #007AFF);
+            color: var(--figma-color-text-onbrand, white);
         }
-        
+
         .primary:hover:not(:disabled) {
-            background: #0056CC;
+            background: var(--figma-color-bg-brand-hover, #0056CC);
         }
-        
+
         .primary:disabled {
-            background: #ccc;
+            background: var(--figma-color-bg-disabled, #ccc);
+            color: var(--figma-color-text-disabled, white);
             cursor: not-allowed;
         }
 
@@ -171,7 +171,7 @@
             align-items: center;
             gap: 8px;
             font-size: 12px;
-            color: #333;
+            color: var(--figma-color-text, #333);
             cursor: pointer;
         }
 
@@ -234,6 +234,15 @@
                 if (e.key === 'Enter' && !document.getElementById('goBtn').disabled) frameImages();
             });
 
+            // Keep the plugin window sized to the content. The document's
+            // height is its natural content height, so whenever it changes
+            // (e.g. the success message adds lines) ask the backend to resize.
+            new ResizeObserver(() => {
+                parent.postMessage({
+                    pluginMessage: { type: 'resize', height: Math.ceil(document.body.scrollHeight) }
+                }, '*');
+            }).observe(document.body);
+
             // Notify plugin that UI is ready
             parent.postMessage({ pluginMessage: { type: 'ui-ready' } }, '*');
         });
@@ -257,7 +266,7 @@
             if (msg.type === 'framing-success') {
                 // Ignore only the next selection update (automatic selection of frames)
                 ignoreNextSelectionUpdate = true;
-                showSuccessMessage(msg.successCount, msg.errorCount, msg.skippedCount);
+                showSuccessMessage(msg.successCount, msg.errorCount, msg.skippedCount, msg.arrangementSkipped);
             }
         };
         
@@ -293,7 +302,7 @@
 
         }
         
-        function showSuccessMessage(successCount, errorCount, skippedCount) {
+        function showSuccessMessage(successCount, errorCount, skippedCount, arrangementSkipped) {
             const selectionInfo = document.getElementById('selectionInfo');
             const selectionText = document.getElementById('selectionText');
             const statusDot = document.getElementById('statusDot');
@@ -312,6 +321,9 @@
             }
             if (errorCount > 0) {
                 lines.push(`${errorCount} image${errorCount !== 1 ? 's' : ''} failed.`);
+            }
+            if (arrangementSkipped) {
+                lines.push(`Arrangement skipped: ${arrangementSkipped}.`);
             }
 
             lines.push('Feel free to resize your frames now.');

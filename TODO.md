@@ -75,7 +75,10 @@ just my own workflow.
 
 ## Tier 2 — Documented API gaps (conditional severity)
 
-- [ ] **Horizontal arrangement breaks across different parents** — `code.ts:184-191`
+- [x] **Horizontal arrangement breaks across different parents** — `code.ts:184-191`
+  *Fixed 2026-06-11: framing still works, but arrangement is skipped when
+  the framed images don't share a single parent; reason shown in the toast
+  and the UI success panel.*
   `x`/`y` are parent-relative (docs: "identical to `relativeTransform[0][2]`"),
   so arranging frames that live in different Sections/Groups positions them in
   mismatched coordinate spaces. Fix options: detect mixed parents and notify +
@@ -83,14 +86,21 @@ just my own workflow.
   whether users select across containers (unknown for my workflow).
   *Confidence: documented · Severity: medium, conditional*
 
-- [ ] **Arrangement silently no-ops inside auto-layout frames** — `code.ts:139-140, 187-190`
+- [x] **Arrangement silently no-ops inside auto-layout frames** — `code.ts:139-140, 187-190`
+  *Fixed 2026-06-11: detected via `layoutMode !== 'NONE'` on the shared
+  parent; arrangement skipped with an explanatory notice instead of
+  silently doing nothing. (Position restore during framing still no-ops in
+  auto layout, but reinsertion at the original child index makes it moot.)*
   Docs: setting `x` on a child of an auto-layout frame is a no-op. Framing
   images that live in an auto-layout container reinserts fine, but position
   restore and the entire horizontal-arrange loop silently do nothing. Either
   detect (`parent.layoutMode !== 'NONE'`) and notify, or accept and document.
   *Confidence: documented · Severity: low-medium (edge case, silent)*
 
-- [ ] **No dark mode support** — `code.ts:79`, all of `ui.html` styling
+- [x] **No dark mode support** — `code.ts:79`, all of `ui.html` styling
+  *Fixed 2026-06-11: `themeColors: true` + every hardcoded color replaced
+  with Figma theme variables (status colors mapped to selected/warning/
+  success roles); old light values kept as CSS fallbacks.*
   UI is hardcoded white; dark-theme Figma users get a glaring white panel.
   Current best practice: `figma.showUI(__html__, { ..., themeColors: true })`
   plus restyling with Figma's CSS variables (`--figma-color-bg`,
@@ -99,12 +109,21 @@ just my own workflow.
   plugin.
   *Confidence: verified gap · Severity: medium (UX, all dark-theme users)*
 
-- [ ] **Failure toasts aren't styled as errors** — `code.ts:227, 232`
+- [x] **Failure toasts aren't styled as errors** — `code.ts:227, 232`
+  *Fixed 2026-06-11: both failure notifies now pass `{ error: true }`.*
   `figma.notify(msg, { error: true })` renders the documented red error
   styling. Two-word change per call site.
   *Confidence: verified gap · Severity: low*
 
 ## Tier 3 — Lower confidence / investigate
+
+- [ ] **Re-framing already-framed images double-wraps them** — discovered
+  during Tier 2 testing: selecting images that are already inside
+  plugin-created frames wraps each in another frame (and each wrapper is a
+  different parent, so arrangement gets skipped as "different containers").
+  Could detect that the image's parent is a single-child frame with the
+  same dimensions and skip or reuse it.
+  *Confidence: verified · Severity: low (user error, but easy to hit)*
 
 - [ ] **`ignoreNextSelectionUpdate` can swallow a real selection change** — `ui.html:222, 248-251, 259`
   Docs confirm `selectionchange` fires on programmatic changes, runs

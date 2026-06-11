@@ -2,6 +2,7 @@
 type UIMessage =
   | { type: 'ui-ready' }
   | { type: 'get-selection' }
+  | { type: 'resize'; height: number }
   | { type: 'frame-images'; customFrameName?: string; arrangeHorizontally?: boolean };
 
 // Parse timestamp from common screenshot naming patterns
@@ -103,7 +104,7 @@ function sendSelectionToUI(): void {
 
 // Always show UI when plugin is launched
 try {
-  figma.showUI(__html__, { width: 320, height: 300 });
+  figma.showUI(__html__, { width: 320, height: 300, themeColors: true });
 
   // Listen for selection changes
   figma.on('selectionchange', () => {
@@ -119,6 +120,10 @@ try {
 figma.ui.onmessage = (msg: UIMessage) => {
   if (msg.type === 'ui-ready' || msg.type === 'get-selection') {
     sendSelectionToUI();
+  }
+
+  if (msg.type === 'resize') {
+    figma.ui.resize(320, Math.max(220, Math.min(600, Math.round(msg.height))));
   }
 
   if (msg.type === 'frame-images') {
@@ -189,8 +194,23 @@ figma.ui.onmessage = (msg: UIMessage) => {
         }
       }
 
-      // Arrange horizontally if requested
-      if (arrangeHorizontally && framedData.length > 0) {
+      // Arrange horizontally if requested. x/y are parent-relative, so
+      // arranging across different parents would mix coordinate spaces;
+      // inside auto-layout parents setting x/y is a silent no-op.
+      // Compare parents by id: the API may return a fresh wrapper object for
+      // the same node on each .parent access, so object identity is unreliable
+      const parentIds = new Set(framedData.map(d => d.frame.parent ? d.frame.parent.id : ''));
+      const sharedParent = parentIds.size === 1 ? framedData[0].frame.parent : null;
+      let arrangementSkipped: string | null = null;
+
+      if (arrangeHorizontally && framedData.length > 0 && !sharedParent) {
+        arrangementSkipped = 'images are in different containers';
+      } else if (
+        arrangeHorizontally && framedData.length > 0 &&
+        sharedParent && 'layoutMode' in sharedParent && sharedParent.layoutMode !== 'NONE'
+      ) {
+        arrangementSkipped = 'the parent frame uses auto layout, which controls positions';
+      } else if (arrangeHorizontally && framedData.length > 0) {
         // Sort by timestamp (with fallback to alphabetical)
         framedData.sort((a, b) => {
           const timeA = parseTimestampFromName(a.originalName);
@@ -238,6 +258,9 @@ figma.ui.onmessage = (msg: UIMessage) => {
         if (errorCount > 0) {
           details.push(`${errorCount} failed`);
         }
+        if (arrangementSkipped) {
+          details.push(`arrangement skipped: ${arrangementSkipped}`);
+        }
 
         if (details.length > 0) {
           message += ` (${details.join(', ')})`;
@@ -252,15 +275,16 @@ figma.ui.onmessage = (msg: UIMessage) => {
           type: 'framing-success',
           successCount: successCount,
           errorCount: errorCount,
-          skippedCount: skippedCount
+          skippedCount: skippedCount,
+          arrangementSkipped: arrangementSkipped
         });
       } else {
-        figma.notify('Failed to frame images. Check console for details.');
+        figma.notify('Failed to frame images. Check console for details.', { error: true });
       }
 
     } catch (error) {
       console.error('Error in frame-images process:', error);
-      figma.notify('Error framing images. Check console for details.');
+      figma.notify('Error framing images. Check console for details.', { error: true });
     }
   }
 };
